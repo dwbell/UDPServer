@@ -2,15 +2,16 @@ package udpserver;
 
 import java.io.*;
 import java.net.*;
+import java.util.ArrayList;
 
 public class UDPServer extends Thread {
 
-    //Socket through which server communicates with clients
-    protected DatagramSocket socket = null;
-    protected boolean moreQuotes = true;
+    private boolean running = true;
+    private DatagramSocket socket = null;
+    private ArrayList<ClientInfo> clients = new ArrayList<>();
 
     public UDPServer() throws IOException {
-        this("QuoteServerThread");
+        this("ServerThread");
     }
 
     public UDPServer(String name) throws IOException {
@@ -21,25 +22,52 @@ public class UDPServer extends Thread {
     @Override
     public void run() {
 
-        while (moreQuotes) { //Looping structure here though even though not used
+        //Infinite Loop
+        while (running) {
+
             try {
-
-                // Byte array for message 
+                /*Recieve a packet*/
                 byte[] buf = new byte[256];
-
-                // receive request
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 socket.receive(packet);
 
-                // respond to request
-                InetAddress address = packet.getAddress();
-                int port = packet.getPort();
-                packet = new DatagramPacket(buf, buf.length, address, port);
-                socket.send(packet);
+                //First new client
+                if (clients.isEmpty()) {
+                    clients.add(new ClientInfo(packet, buf));
+
+                    //Check if client is a new client
+                } else {
+                    boolean match = false;
+                    for (ClientInfo client : clients) {
+                        //Check for a match with existing clients
+                        if (packet.getAddress().equals(client.getAddress()) && packet.getPort() == client.getPortNo()) {
+                            match = true;
+                        }
+                    }
+
+                    //If there was no match add it to list
+                    if (!match) {
+                        clients.add(new ClientInfo(packet, buf));
+                    } else {
+                        //if there was a match behaviour here
+                    }
+                }
+
+                /*Respond to all clients with echo of there own message*/
+                for (ClientInfo client : clients) {
+                    System.out.println("Address: " + client.getAddress());
+                    System.out.println("Port Number: " + client.getPortNo());
+                    System.out.println("# of Clients: " + clients.size());
+                    System.out.println();
+                    packet = new DatagramPacket(buf, buf.length, client.getAddress(), client.getPortNo());
+                    socket.send(packet);
+                }
+
             } catch (IOException e) {
                 e.printStackTrace();
-                moreQuotes = false;
+                running = false;
             }
+
         }
         socket.close();
     }
