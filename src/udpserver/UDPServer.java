@@ -8,6 +8,7 @@ public class UDPServer extends Thread {
 
     private boolean running = true;
     private DatagramSocket socket = null;
+    private Protocol protocol;
     private ArrayList<ClientInfo> clients = new ArrayList<>();
 
     public UDPServer() throws IOException {
@@ -24,14 +25,19 @@ public class UDPServer extends Thread {
 
         //Infinite Loop
         while (running) {
-
             try {
-                /*Recieve a packet*/
+                //Constantly listen
                 byte[] buf = new byte[256];
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 socket.receive(packet);
 
-                //First new client
+                //Process what was received
+                String received = new String(packet.getData());
+                buf = received.getBytes();
+                
+                //int cmd = protocol.process(received);
+                
+                 //First new client
                 if (clients.isEmpty()) {
                     clients.add(new ClientInfo(packet, buf));
 
@@ -53,16 +59,23 @@ public class UDPServer extends Thread {
                     }
                 }
 
-                /*Respond to all clients with echo of there own message*/
+                //Respond to all?
                 for (ClientInfo client : clients) {
                     System.out.println("Address: " + client.getAddress());
                     System.out.println("Port Number: " + client.getPortNo());
                     System.out.println("# of Clients: " + clients.size());
                     System.out.println();
-                    packet = new DatagramPacket(buf, buf.length, client.getAddress(), client.getPortNo());
+                    packet = new DatagramPacket(client.getBuf(), client.getBuf().length, clients.get(0).getAddress(), clients.get(0).getPortNo());
                     socket.send(packet);
                 }
-
+                
+                //Stop command
+                byte stop[] = new byte[256];
+                String s = "STOP";
+                stop = s.getBytes();
+                packet = new DatagramPacket(stop, stop.length, clients.get(0).getAddress(), clients.get(0).getPortNo());
+                socket.send(packet);
+                
             } catch (IOException e) {
                 e.printStackTrace();
                 running = false;
